@@ -1,0 +1,43 @@
+import org.apache.spark.sql.functions._
+import org.apache.spark.sql.streaming.Trigger
+import org.apache.spark.sql.types._
+
+val newsArticleSchema = new StructType()
+  .add("keyword", StringType)
+  .add("title", StringType)
+  .add("description", StringType)
+  .add("author", StringType)
+  .add("link", StringType)
+  .add("image", StringType)
+  .add("publish_date", TimestampType)
+  .add("event_time", TimestampType)
+
+
+// From HDFS
+val newsArticleStream = spark.readStream
+  .format("json")
+  .schema(newsArticleSchema)
+  .option("path", "hdfs:///BigData/hive/news_topic/")
+  .load()
+
+val aggregatedStream = newsArticleStream
+  .withWatermark("event_time", "2 minutes")
+  .groupBy(
+    window($"event_time", "1 minutes"),
+    $"keyword"
+  )
+  .agg(count("*").alias("total_count"))
+  .select(
+    $"keyword",
+    $"total_count"
+  )
+
+  val query = aggregatedStream
+  .writeStream
+  .format("json")
+  .outputMode("append")
+  .option("checkpointLocation", "/BigData/hive/spark_streaming_checkpoint")
+  .option("path", "/BigData/hive/spark_streaming_output_data")
+  .start()
+
+query.awaitTermination()

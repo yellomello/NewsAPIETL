@@ -1,0 +1,7 @@
+CREATE EXTERNAL TABLE news_test (
+  keyword STRING,
+  total_count INT
+)
+ROW FORMAT SERDE 'org.apache.hive.hcatalog.data.JsonSerDe'
+STORED AS TEXTFILE
+LOCATION '/BigData/hive/spark_streaming_output_data';
